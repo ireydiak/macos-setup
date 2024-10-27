@@ -4,12 +4,11 @@ MAC_SETUP_PROFILE=$INSTALL_FOLDER/macsetup_profile
 
 if ! hash brew
 then
-    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-    brew update
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  brew update
 else
     printf "\e[93m%s\e[m\n" "You already have brew installed."
 fi
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # cURL & wget
 brew install curl
