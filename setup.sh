@@ -36,6 +36,10 @@ sudo chown -R root:staff /usr/local/share/zsh
   echo "  compinit"
   echo "fi"
 } >>$MAC_SETUP_PROFILE
+if !/usr/local/bin
+  mkdir /usr/local/bin
+fi
+mkdir -p /usr/local/bin
 curl -sS https://starship.rs/install.sh | sh
 echo 'eval "$(starship init zsh)"' >> $MAC_SETUP_PROFILE
 
@@ -78,9 +82,9 @@ brew install go
 # python
 echo "export PATH=\"/usr/local/opt/python/libexec/bin:\$PATH\"" >> $MAC_SETUP_PROFILE
 brew install python
-pip install --user pipenv
-pip install --upgrade setuptools
-pip install --upgrade pip
+pip3 install --user pipenv
+pip3 install --upgrade setuptools
+pip3 install --upgrade pip
 brew install pyenv
 # shellcheck disable=SC2016
 echo 'eval "$(pyenv init -)"' >> $MAC_SETUP_PROFILE
