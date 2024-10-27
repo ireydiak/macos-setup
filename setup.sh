@@ -36,9 +36,6 @@ sudo chown -R root:staff /usr/local/share/zsh
   echo "  compinit"
   echo "fi"
 } >>$MAC_SETUP_PROFILE
-if !/usr/local/bin
-  mkdir /usr/local/bin
-fi
 mkdir -p /usr/local/bin
 curl -sS https://starship.rs/install.sh | sh
 echo 'eval "$(starship init zsh)"' >> $MAC_SETUP_PROFILE
