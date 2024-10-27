@@ -9,6 +9,7 @@ then
 else
     printf "\e[93m%s\e[m\n" "You already have brew installed."
 fi
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # cURL & wget
 brew install curl
