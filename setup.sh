@@ -57,6 +57,7 @@ brew install --cask iterm2
 brew install jq
 brew install htop
 brew install ripgrep
+brew install fzf
 
 # IDE
 brew install --cask jetbrains-toolbox
