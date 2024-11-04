@@ -1,129 +1,217 @@
-INSTALL_FOLDER=$HOME/.macsetup
-mkdir -p $INSTALL_FOLDER
-MAC_SETUP_PROFILE=$INSTALL_FOLDER/macsetup_profile
+#!/usr/bin/env bash
 
-if ! hash brew
-then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  echo >> $HOME/.zprofile
-  echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-  brew update
+# Exit on error. Append "|| true" if you expect an error.
+set -e
+# Exit on error in any piped commands
+set -o pipefail
+
+# Define constants
+INSTALL_FOLDER="${HOME}/.macsetup"
+MAC_SETUP_PROFILE="${INSTALL_FOLDER}/macsetup_profile"
+CONFIG_DIR="${HOME}/.config"
+
+# Utility functions
+log_info() {
+    printf "\033[0;34m%s\033[0m\n" "$1"
+}
+
+log_warning() {
+    printf "\033[0;33m%s\033[0m\n" "$1"
+}
+
+log_error() {
+    printf "\033[0;31m%s\033[0m\n" "$1" >&2
+}
+
+# Create necessary directories
+mkdir -p "${INSTALL_FOLDER}"
+mkdir -p "${CONFIG_DIR}"
+
+# Check for and install Homebrew
+if ! command -v brew >/dev/null 2>&1; then
+    log_info "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    echo >> "${HOME}/.zprofile"
+    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "${HOME}/.zprofile"
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+    brew update
+    source $HOME/.zprofile
 else
-    printf "\e[93m%s\e[m\n" "You already have brew installed."
+    log_warning "Homebrew is already installed"
 fi
 
-# cURL & wget
-brew install curl
-brew install wget
-{
-  # shellcheck disable=SC2016
-  echo 'export PATH="/usr/local/opt/curl/bin:$PATH"'
-  # shellcheck disable=SC2016
-  echo 'export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"'
-  # shellcheck disable=SC2016
-  echo 'export PATH="/usr/local/opt/sqlite/bin:$PATH"'
-}>>$MAC_SETUP_PROFILE
+# Install Rosetta 2 for M1 compatibility
+log_info "Installing Rosetta 2..."
+softwareupdate --install-rosetta --agree-to-license
 
-# zsh
-brew install zsh zsh-completions                                                                      # Install zsh and zsh completions
-sudo chmod -R 755 /usr/local/share/zsh
-sudo chown -R root:staff /usr/local/share/zsh
-{
-  echo "if type brew &>/dev/null; then"
-  echo "  FPATH=$(brew --prefix)/share/zsh/site-functions:$FPATH"
-  echo "  autoload -Uz compinit"
-  echo "  compinit"
-  echo "fi"
-} >>$MAC_SETUP_PROFILE
-mkdir -p /usr/local/bin
+# Basic development tools
+log_info "Installing basic development tools..."
+brew install \
+    curl \
+    wget \
+    git \
+    cmake \
+    jq \
+    htop \
+    ripgrep \
+    fzf
+cp fzf.zsh $HOME/.fzf.zsh
+
+# Install and configure ZSH
+log_info "Setting up ZSH..."
+if [[ -f "$HOME/.zshrc" ]]; then
+    touch $HOME/.zshrc
+else
+    log_warning "$HOME/.zshrc already exists"
+fi
+brew install zsh zsh-completions
+cat >> "$HOME/.zshrc" << 'EOF'
+eval "$(/opt/homebrew/bin/brew shellenv)"
+export PATH=$HOME/.local/bin:$PATH
+alias tf=terraform
+export PATH="/opt/homebrew/bin:$PATH"
+export PATH="$PATH:$(go env GOPATH)/bin"
+# zsh syntax highlighting theme
+source /Users/ireydiak/.config/zsh/zsh-syntax-highlighting/themes/catppuccin_mocha-zsh-syntax-highlighting.zsh
+# now load zsh-syntax-highlighting plugin
+source /Users/ireydiak/.config/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+EOF
+
+source $HOME/.zshrc
+
+# ZSH completion configuration
+cat >> "$HOME/.zshrc" << 'EOF'
+if type brew &>/dev/null; then
+    FPATH="$(brew --prefix)/share/zsh/site-functions:$FPATH"
+    autoload -Uz compinit
+    compinit
+fi
+EOF
+
+# Install and configure Starship prompt
+log_info "Setting up Starship prompt..."
+sudo mkdir -p /usr/local/bin
+if [[ -f "starship.toml" ]]; then
+    cp starship.toml "${CONFIG_DIR}/"
+else
+    log_warning "starship.toml not found in current directory"
+fi
 curl -sS https://starship.rs/install.sh | sh
-echo 'eval "$(starship init zsh)"' >> $MAC_SETUP_PROFILE
+echo 'eval "$(starship init zsh)"' >> "$HOME/.zshrc"
 
-# git & cmake
-brew install git
-brew install cmake
+# Install Oh My Zsh
+log_info "Installing Oh My Zsh..."
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# Install oh-my-zsh on top of zsh to getting additional functionality
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-
-# terminal
+# Terminal utilities and aliases
+log_info "Setting up terminal utilities..."
 brew install --cask iterm2
-{
-  echo "alias l='ls -l'"
-  echo "alias la='ls -a'"
-  echo "alias lla='ls -la'"
-} >>$MAC_SETUP_PROFILE
-brew install jq
-brew install htop
-brew install ripgrep
-brew install fzf
+cat >> "$HOME/.zshrc" << 'EOF'
+alias l='ls -l'
+alias la='ls -a'
+alias lla='ls -la'
+EOF
 
-# IDE
+# Development environments
+log_info "Installing development environments..."
 brew install --cask jetbrains-toolbox
 brew install neovim
+cp -r nvim $HOME/.config
 
-## Setup Neovim
-
-# JavaScript, NodeJS
-brew install nvm                                                                                     # choose your version of npm
-nvm install node                                                                                     # "node" is an alias for the latest version
+# Programming languages and tools
+# Node.js
+log_info "Setting up Node.js environment..."
+brew install nvm
+mkdir -p "${HOME}/.nvm"
+cat >> "$HOME/.zshrc" << 'EOF'
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+EOF
+source "$HOME/.zshrc"
+nvm install node
 brew install yarn
 curl -fsSL https://get.pnpm.io/install.sh | sh -
 
-# PHP
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac)"
+# Python
+log_info "Setting up Python environment..."
+brew install python pyenv
+echo 'eval "$(pyenv init -)"' >> "$HOME/.zshrc"
+pip3 install --user pipenv
+pip3 install --upgrade setuptools pip
 
-# Golang
+# Go
+log_info "Setting up Go environment..."
 brew install go
 
-# python
-echo "export PATH=\"/usr/local/opt/python/libexec/bin:\$PATH\"" >> $MAC_SETUP_PROFILE
-brew install python
-pip3 install --user pipenv
-pip3 install --upgrade setuptools
-pip3 install --upgrade pip
-brew install pyenv
-# shellcheck disable=SC2016
-echo 'eval "$(pyenv init -)"' >> $MAC_SETUP_PROFILE
+# PHP
+log_info "Setting up PHP environment..."
+/bin/bash -c "$(curl -fsSL https://php.new/install/mac)"
 
-# fonts
+# Fonts
+log_info "Installing fonts..."
 brew tap homebrew/cask-fonts
 brew install --cask font-jetbrains-mono
 
-# misc
-brew install --cask spotify
-brew install --cask slack
-brew install --cask google-chrome
-git clone https://github.com/koekeishiya/yabai && cd ./yabai && make install >> /dev/null && cd ..
-brew install alt-tab
-brew install --cask rapidapi
+# Browsers
+log_info "Installing browsers..."
+brew install --cask \
+    arc \
+    google-chrome \
+    firefox
 
-# Docker
-brew install --cask docker
-brew install bash-completion
-brew install docker-completion
-brew install docker-compose-completion
-brew install docker-machine-completion
-softwareupdate --install-rosetta
+# Applications
+log_info "Installing applications..."
+brew install --cask \
+    spotify \
+    slack \
+    rapidapi \
+    docker \
+    dbeaver-community
 
-# Databases
-brew install --cask dbeaver-community
-brew install libpq                  # postgre command line
+# Docker utilities
+log_info "Setting up Docker utilities..."
+brew install \
+    bash-completion \
+    docker-completion \
+    docker-compose-completion \
+    docker-machine-completion
+
+# Database tools
+log_info "Setting up database tools..."
+brew install libpq
 brew link --force libpq
-# shellcheck disable=SC2016
-echo 'export PATH="/usr/local/opt/libpq/bin:$PATH"' >> $MAC_SETUP_PROFILE
 
-# AWS command line
+# AWS CLI
+log_info "Installing AWS CLI..."
 brew install awscli
 
-# terraform
+# Terraform
+log_info "Installing Terraform..."
 brew install terraform
 terraform -v
 
-# reload profile
-{
-  echo "source $MAC_SETUP_PROFILE # alias and things added by mac_setup script"
-}>>"$HOME/.zsh_profile"
-# shellcheck disable=SC1090
-source "$HOME/.zsh_profile"
+# Window management
+log_info "Setting up window management..."
+if [[ ! -d "./yabai" ]]; then
+    git clone https://github.com/koekeishiya/yabai
+    cd yabai
+    make install > /dev/null
+    cd ..
+fi
+if [[ -f "yabairc" ]]; then
+    cp yabairc "${HOME}/.yabairc"
+else
+    log_warning "yabairc not found in current directory"
+fi
+
+# Final profile setup
+log_info "Finalizing profile setup..."
+echo "source $HOME/zshrc # alias and things added by mac_setup script" >> "${HOME}/.zsh_profile"
+source "${HOME}/.zshrc"
+
+log_info "Setup complete! Please restart your terminal for all changes to take effect."

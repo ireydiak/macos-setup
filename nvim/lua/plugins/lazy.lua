@@ -111,7 +111,27 @@ require('lazy').setup({
     })
     end
   },
-
+  {
+    'doums/rg.nvim',
+    cmd = { 'Rg', 'Rgf', 'Rgp', 'Rgfp' },
+    config = function()
+        require('rg').setup({
+          -- Optional function to be used to format the items in the
+          -- quickfix window (:h 'quickfixtextfunc')
+          qf_format = nil,
+          -- Glob list of excluded files and directories when the special
+          -- `e` flag is set (it uses the `--glob !*` flag of rg)
+          excluded = {
+            '.idea',
+            'node_modules',
+            '.git',
+            'target',
+            'package-lock.json',
+            'Cargo.lock',
+          },
+        })
+    end
+  },
   {
     'rmagatti/goto-preview',
     config = function()
@@ -249,8 +269,11 @@ require('lazy').setup({
   -- Fuzzy Finder (files, lsp, etc)
   { 'nvim-telescope/telescope.nvim', branch = '0.1.x', dependencies = { 'nvim-lua/plenary.nvim' } },
   'nvim-telescope/telescope-symbols.nvim',
-  'ThePrimeagen/harpoon',
-
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" }
+  },
   -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available
   { 'nvim-telescope/telescope-fzf-native.nvim', build = 'make', cond = vim.fn.executable 'make' == 1 },
   {
